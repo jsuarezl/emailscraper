@@ -1,4 +1,3 @@
-# account credentials
 import email
 import imaplib
 from email.header import decode_header
@@ -21,7 +20,7 @@ def write(folder: str, msg: Message) -> None:
     delivered_to = decode("Delivered-To", msg)
     reply_to = decode("Reply-To", msg)
     to = decode("To", msg)
-    file = open(output, "a")
+    file = open(output, "a", encoding='utf8')
     file.write(
         folder + ";" +
         clean_write(delivered_to) + ";" +
@@ -37,7 +36,10 @@ def decode(data: str, msg: Message):
     try:
         d, encoding = decode_header(msg[data])[0]
         if isinstance(d, bytes):
-            d = (d.decode(encoding) if encoding is not None else d.decode()).strip().replace('<', '').replace('>', '')
+            try:
+                d = d.decode('utf8').strip().replace(' ', '').replace('<', '').replace('>', '')
+            except UnicodeDecodeError:
+                d = d.decode('latin-1').strip().replace(' ', '').replace('<', '').replace('>', '')
         return d
     except TypeError:
         return msg[data]
@@ -58,7 +60,7 @@ def remove_emojis(text):
 
 
 for li in imap.list()[1]:
-    folder = li.decode().split(' "/" ')[1]
+    folder = li.decode().split(' "." ')[1]
     skip = False
     for ign in ignored:
         if folder.lower() in ign:
@@ -72,9 +74,8 @@ for li in imap.list()[1]:
     print("status: " + status)
     if status != "OK":
         continue
-    N = 100
     messages = int(messages[0])
-    for i in range(messages, messages - N if messages > N else 0, -1):
+    for i in range(messages, 0, -1):
         print("remaining mails: ", i)
         res, msg = imap.fetch(str(i), "(RFC822)")
         for response in msg:
